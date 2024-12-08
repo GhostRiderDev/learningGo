@@ -1,6 +1,8 @@
 package model
 
+import "encoding/json"
+
 type User struct {
 	Name string `json:"name"`
-	Age  int    `json:"age"`
+	Age  json.Number    `json:"age"`
 }

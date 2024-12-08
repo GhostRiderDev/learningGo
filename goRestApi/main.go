@@ -52,9 +52,21 @@ func main() {
 	app.Use(cors.New())
 
 	app.Get("/users", func(c *fiber.Ctx) error {
-		return c.JSON(&fiber.Map{
-			"data": "Este es un usario valido",
-		})
+		var usersFound []model.User
+
+		result, err := users.Find(context.TODO(), bson.M{})
+
+		if err != nil {
+			log.Fatal("Error al recuperar usuarios")
+		}
+
+		for result.Next(context.TODO()) {
+			var user model.User
+			result.Decode(&user)
+			usersFound = append(usersFound, user)
+		}
+
+		return c.JSON(&usersFound)
 	})
 
 	app.Post("/users", func(c *fiber.Ctx) error {
@@ -76,7 +88,7 @@ func main() {
 
 		log.Printf("%s\n", result)
 
-		return c.JSON(&userToSave)
+		return c.JSON(&result)
 	})
 
 	app.Listen(":" + SERVER_PORT)
