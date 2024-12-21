@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -35,7 +36,6 @@ func CreateTodoHandler(w http.ResponseWriter, r *http.Request, mu *sync.RWMutex,
 		RespondWithError(w, r, http.StatusBadRequest, &errMsg)
 	}
 
-
 	err := validate.Struct(t)
 
 	if err != nil {
@@ -50,4 +50,26 @@ func CreateTodoHandler(w http.ResponseWriter, r *http.Request, mu *sync.RWMutex,
 
 	todos[t.Id] = t
 	ResponseWithJson(w, r, http.StatusCreated, helper.FormatTodo(t))
+}
+
+func GetTodoHandler(w http.ResponseWriter, r *http.Request, mu *sync.RWMutex, todos helper.TodosMap) {
+	id, err := helper.GetIdParam(r)
+
+	if err != nil {
+		mesgErr := "ID invalido"
+		RespondWithError(w, r, http.StatusBadRequest, &mesgErr)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	t, ok := todos[id]
+
+	if !ok {
+		mess := fmt.Sprintf("Todo with id %s not found", id)
+		RespondWithError(w, r, http.StatusNotFound, &mess)
+	}
+
+	ResponseWithJson(w, r, http.StatusOK, helper.FormatTodo(t))
 }
