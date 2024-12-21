@@ -34,6 +34,13 @@ func handlerTwo(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		handlers.GetTodoHandler(w, r, mu, todos)
+	case http.MethodPut:
+		handlers.UpdateTodoHanlder(w, r, mu, todos, validate)
+	case http.MethodDelete:
+		handlers.DeleteTodoHandler(w, r, mu, todos)
+	default:
+		message := "Method not allowed"
+		handlers.RespondWithError(w, r, http.StatusMethodNotAllowed, &message)
 	}
 }
 
@@ -42,7 +49,7 @@ func main() {
 
 	server.HandleFunc("/api/v1/health", handlers.HealthHandler)
 	server.HandleFunc("/api/v1/todos", handlerOne)
-	server.HandleFunc("/api/v1/todos", handlerTwo)
+	server.HandleFunc("/api/v1/todos/", handlerTwo)
 
 	log.Println("Server is running at http://localhost:6060/")
 	log.Fatal(http.ListenAndServe(":6060", config.Cors(server)))
