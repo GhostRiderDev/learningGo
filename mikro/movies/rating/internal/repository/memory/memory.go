@@ -21,7 +21,7 @@ func New() *Repository {
 }
 
 // Get returns a rating by recordType and id from repository
-func (r *Repository) Get(ctx context.Context, id model.RecordID, recordType model.RecordType) ([]model.Rating, error) {
+func (r *Repository) Get(ctx context.Context, id model.RecordID, recordType model.RecordType) (*[]model.Rating, error) {
 	if _, ok := r.data[recordType]; !ok {
 		return nil, repository.ErrNotFound
 	}
@@ -30,7 +30,9 @@ func (r *Repository) Get(ctx context.Context, id model.RecordID, recordType mode
 		return nil, repository.ErrNotFound
 	}
 
-	return r.data[recordType][id], nil
+	res := r.data[recordType][id]
+
+	return &res, nil
 }
 
 // Put adds a rating for given a record

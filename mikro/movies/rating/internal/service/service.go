@@ -45,7 +45,6 @@ func (s *Service) GetAggregatedRating(ctx context.Context, id model.RecordID, re
 	return sum / float64(len(*ratings)), nil
 }
 
-
 // PutRating writes a rating for a given record.
 func (s *Service) PutRating(ctx context.Context, id model.RecordID, recordType model.RecordType, rating *model.Rating) error {
 	return s.repo.Put(ctx, id, recordType, rating)
