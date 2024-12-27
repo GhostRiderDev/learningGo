@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
-	"time"
 
-	metadataGateway "github.com/ghostriderdev/movies/movie/internal/gateway/metadata/rest"
-	ratingGateway "github.com/ghostriderdev/movies/movie/internal/gateway/rating/rest"
+	metadataGateway "github.com/ghostriderdev/movies/movie/internal/gateway/metadata/grpc"
+	ratingGateway "github.com/ghostriderdev/movies/movie/internal/gateway/rating/grpc"
 	rest "github.com/ghostriderdev/movies/movie/internal/handler"
 	movie "github.com/ghostriderdev/movies/movie/internal/service"
 	"github.com/ghostriderdev/movies/pkg/discovery"
@@ -21,45 +19,24 @@ const serviceName = "movie"
 func main() {
 	var port int
 
-	flag.IntVar(&port, "port", 8080, "Api handler port")
+	flag.IntVar(&port, "port", 7070, "Api handler port")
 	flag.Parse()
 
 	log.Printf("Starting the movie service on port %d", port)
 
-	registry, err := consul.NewRegistry("localhost:8500")
-
+	registry, cancel, err := consul.RegisterService(port, "localhost", serviceName, "localhost:8500")
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to register service: %v", err)
 	}
-
-	ctx := context.Background()
-
-	instanceID := discovery.GenerateInstanceID(serviceName)
-
-	if err := registry.Register(ctx, instanceID, serviceName, fmt.Sprintf("localhost:%d", port)); err != nil {
-		panic(err)
-	}
-
-	go func() {
-		for {
-			if err := registry.ReportHealthyState(instanceID, serviceName); err != nil {
-				log.Printf("%s", "Failed to report healthy state: "+err.Error())
-			}
-
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	defer registry.Deregister(ctx, instanceID, serviceName)
-
-
+	defer cancel()
+	defer registry.Deregister(context.Background(), discovery.GenerateInstanceID(serviceName), serviceName)
 
 	metadataGateway := metadataGateway.New(registry)
 	ratingGateway := ratingGateway.New(registry)
 	ctrl := movie.New(ratingGateway, metadataGateway)
 	h := rest.New(ctrl)
 	http.Handle("/movie", http.HandlerFunc(h.GetMovieDetails))
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":7070", nil); err != nil {
 		panic(err)
 	}
 }

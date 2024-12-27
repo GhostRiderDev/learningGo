@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	"github.com/ghostriderdev/movies/pkg/discovery"
 	"github.com/ghostriderdev/movies/pkg/discovery/consul"
@@ -22,18 +21,23 @@ const serviceName = "rating"
 func main() {
 	var port int
 
-	flag.IntVar(&port, "port", 6060, "Api handler port")
+	flag.IntVar(&port, "port", 5050, "Api handler port")
 	flag.Parse()
 
 	log.Printf("Starting the rating service on port %d", port)
 
-	registryService(port)
+	registry, cancel, err := consul.RegisterService(port, "localhost", serviceName, "localhost:8500")
+	if err != nil {
+		log.Fatalf("failed to register service: %v", err)
+	}
+	defer cancel()
+	defer registry.Deregister(context.Background(), discovery.GenerateInstanceID(serviceName), serviceName)
 
 	repo := memory.New()
 	service := rating.New(repo)
 	h := grpcRating.New(service)
 
-	listener, err := net.Listen("tcp", "localhost:6060")
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err.Error())
@@ -43,34 +47,6 @@ func main() {
 	gen.RegisterRatingServiceServer(server, h)
 	server.Serve(listener)
 
-}
-
-func registryService(port int) {
-	registry, err := consul.NewRegistry("localhost:8500")
-
-	if err != nil {
-		panic(err)
-	}
-
-	ctx := context.Background()
-
-	instanceID := discovery.GenerateInstanceID(serviceName)
-
-	if err := registry.Register(ctx, instanceID, serviceName, fmt.Sprintf("localhost:%d", port)); err != nil {
-		panic(err)
-	}
-
-	go func() {
-		for {
-			if err := registry.ReportHealthyState(instanceID, serviceName); err != nil {
-				log.Printf("%s", "Failed to report healthy state: "+err.Error())
-			}
-
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	defer registry.Deregister(ctx, instanceID, serviceName)
 }
 
 func implRest() {

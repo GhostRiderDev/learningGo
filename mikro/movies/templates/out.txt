@@ -1,0 +1,12 @@
+upstream metadata {
+
+}
+
+upstream movie {
+
+}
+
+upstream rating {
+
+}
+

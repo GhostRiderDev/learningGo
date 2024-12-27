@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	grpcMetadata "github.com/ghostriderdev/movies/metadata/internal/handler/grpc"
 	"github.com/ghostriderdev/movies/metadata/internal/repository/memory"
@@ -27,7 +26,12 @@ func main() {
 
 	log.Printf("Starting the metadata service on port %d", port)
 
-	registryService(port)
+	registry, cancel, err := consul.RegisterService(port, "localhost", serviceName, "localhost:8500")
+	if err != nil {
+		log.Fatalf("failed to register service: %v", err)
+	}
+	defer cancel()
+	defer registry.Deregister(context.Background(), discovery.GenerateInstanceID(serviceName), serviceName)
 
 	repo := memory.New()
 	service := metadata.New(repo)
@@ -43,34 +47,6 @@ func main() {
 
 	gen.RegisterMetadataServiceServer(server, h)
 	server.Serve(listener)
-}
-
-func registryService(port int) {
-	registry, err := consul.NewRegistry("localhost:8500")
-
-	if err != nil {
-		panic(err)
-	}
-
-	ctx := context.Background()
-
-	instanceID := discovery.GenerateInstanceID(serviceName)
-
-	if err := registry.Register(ctx, instanceID, serviceName, fmt.Sprintf("localhost:%d", port)); err != nil {
-		panic(err)
-	}
-
-	go func() {
-		for {
-			if err := registry.ReportHealthyState(instanceID, serviceName); err != nil {
-				log.Printf("%s", "Failed to report healthy state: "+err.Error())
-			}
-
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	defer registry.Deregister(ctx, instanceID, serviceName)
 }
 
 func implRest() {

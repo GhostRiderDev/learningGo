@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// ServiceConnection attempts to select a random service
+// instance and returns a gRPC connection to it.
 func ServiceConnection(ctx context.Context, serviceName string, registry discovery.Registry) (*grpc.ClientConn, error) {
 	addrs, err := registry.GetInstances(ctx, serviceName)
 
