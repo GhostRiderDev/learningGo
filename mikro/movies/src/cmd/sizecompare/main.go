@@ -7,7 +7,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 
-	model "github.com/ghostriderdev/movies/metadata/pkg"
+	model "github.com/ghostriderdev/movies/metadata/pkg/model"
 	"github.com/ghostriderdev/movies/src/gen"
 )
 
