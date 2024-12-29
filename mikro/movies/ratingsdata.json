@@ -2,7 +2,7 @@
   {
     "userId": "105",
     "recordId": "1",
-    "recordType": 1,
+    "recordType": "movie",
     "value": 5,
     "providerId": "test-provider",
     "eventType": "put"
@@ -10,7 +10,7 @@
   {
     "userId": "105",
     "recordId": "2",
-    "recordType": 1,
+    "recordType": "movie",
     "value": 4,
     "providerId": "testprovider",
     "eventType": "put"

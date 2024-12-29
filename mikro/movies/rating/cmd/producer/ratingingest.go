@@ -3,25 +3,24 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"os"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaclient "github.com/ghostriderdev/movies/pkg/messaging/kafka"
 	model "github.com/ghostriderdev/movies/rating/pkg"
 )
 
 func main() {
 	fmt.Println("Creating a kafka producer")
 
-	producer, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": "localhost",
-	})
+	producer, err := kafkaclient.NewProducer("localhost")
 
 	if err != nil {
 		panic(err)
 	}
-
-	defer producer.Close()
 
 	const fileName = "ratingsdata.json"
 
@@ -47,19 +46,15 @@ func main() {
 }
 
 func produceRatingEvents(topic string, producer *kafka.Producer, ratings *[]model.RatingEvent) error {
-	for _, ratingEvent := range *ratings {
-		encodedEvent, err := json.Marshal(ratingEvent)
+	for _, rating := range *ratings {
+		encodedEvent, err := json.Marshal(rating)
 
 		if err != nil {
 			return err
 		}
 
-		if err := producer.Produce(&kafka.Message{
-			TopicPartition: kafka.TopicPartition{
-				Topic: &topic, Partition: kafka.PartitionAny,
-			},
-			Value: []byte(encodedEvent),
-		}, nil); err != nil {
+		if err := kafkaclient.ProduceEvent(topic, producer, encodedEvent); err != nil {
+			log.Println("Error aqui **************")
 			return err
 		}
 	}
