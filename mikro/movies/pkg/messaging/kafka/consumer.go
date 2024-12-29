@@ -4,55 +4,79 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/IBM/sarama"
 )
 
-// NewConsumer creates a new Kafka consumer.
-func NewConsumer(bootstrapServers, groupId, topic string) (*kafka.Consumer, error) {
-	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": bootstrapServers,
-		"group.id":          groupId,
-		"auto.offset.reset": "earliest",
-	})
+// NewConsumer creates a new Kafka consumer using Sarama.
+func NewConsumer(bootstrapServers, groupId, topic string) (sarama.ConsumerGroup, error) {
+	config := sarama.NewConfig()
+	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
+	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
+	consumerGroup, err := sarama.NewConsumerGroup([]string{bootstrapServers}, groupId, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return consumer, nil
+	return consumerGroup, nil
 }
 
-func Consume[T any](ctx context.Context, topic string, c *kafka.Consumer) (chan T, error) {
-	if err := c.SubscribeTopics([]string{topic}, nil); err != nil {
-		return nil, err
-	}
+// ConsumerGroupHandler handles Kafka messages.
+type ConsumerGroupHandler[T any] struct {
+	ready chan bool
+	ch    chan T
+}
 
+func (h *ConsumerGroupHandler[T]) Setup(_ sarama.ConsumerGroupSession) error {
+	close(h.ready)
+	return nil
+}
+
+func (h *ConsumerGroupHandler[T]) Cleanup(_ sarama.ConsumerGroupSession) error {
+	return nil
+}
+
+func (h *ConsumerGroupHandler[T]) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for msg := range claim.Messages() {
+		var value T
+		if err := json.Unmarshal(msg.Value, &value); err == nil {
+			h.ch <- value
+		} else {
+			fmt.Printf("Unmarshal error: %v\n", err)
+		}
+		sess.MarkMessage(msg, "")
+	}
+	return nil
+}
+
+func Consume[T any](ctx context.Context, topic string, consumerGroup sarama.ConsumerGroup) (chan T, error) {
 	ch := make(chan T, 1)
+	handler := ConsumerGroupHandler[T]{
+		ready: make(chan bool),
+		ch:    make(chan T),
+	}
 
 	go func() {
 		defer close(ch)
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				msg, err := c.ReadMessage(-1)
-				if err == nil {
-					var value T
-					if err := json.Unmarshal(msg.Value, &value); err == nil {
-						ch <- value
-					} else {
-						// Handle unmarshal error
-						fmt.Printf("Unmarshal error: %v\n", err)
-					}
-				} else {
-					// Handle read message error
-					fmt.Printf("Consumer error: %v (%v)\n", err, msg)
-				}
+			if err := consumerGroup.Consume(ctx, []string{topic}, &handler); err != nil {
+				log.Printf("Error from consumer: %v", err)
 			}
+			if ctx.Err() != nil {
+				return
+			}
+			handler.ready = make(chan bool)
 		}
 	}()
 
+	go func() {
+		for value := range handler.ch {
+			ch <- value
+		}
+	}()
+
+	<-handler.ready
 	return ch, nil
 }

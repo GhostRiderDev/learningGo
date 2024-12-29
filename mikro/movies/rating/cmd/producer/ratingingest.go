@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/IBM/sarama"
 	kafkaclient "github.com/ghostriderdev/movies/pkg/messaging/kafka"
 	model "github.com/ghostriderdev/movies/rating/pkg"
 )
@@ -16,7 +16,7 @@ import (
 func main() {
 	fmt.Println("Creating a kafka producer")
 
-	producer, err := kafkaclient.NewProducer("localhost")
+	producer, err := kafkaclient.NewProducer("localhost:9092")
 
 	if err != nil {
 		panic(err)
@@ -42,10 +42,11 @@ func main() {
 
 	fmt.Println("Waiting " + timeout.String() + " until all events get produced")
 
-	producer.Flush(int(timeout.Milliseconds()))
+	time.Sleep(timeout)
+	defer producer.Close()
 }
 
-func produceRatingEvents(topic string, producer *kafka.Producer, ratings *[]model.RatingEvent) error {
+func produceRatingEvents(topic string, producer sarama.SyncProducer, ratings *[]model.RatingEvent) error {
 	for _, rating := range *ratings {
 		encodedEvent, err := json.Marshal(rating)
 

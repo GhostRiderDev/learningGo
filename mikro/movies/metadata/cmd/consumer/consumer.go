@@ -13,7 +13,7 @@ func main() {
 
 	const topic = "ratings"
 
-	consumer, err := kafkaclient.NewConsumer("localhost", "metadata", topic)
+	consumer, err := kafkaclient.NewConsumer("localhost:9092", "metadata", topic)
 
 	if err != nil {
 		panic(err)
