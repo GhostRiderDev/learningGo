@@ -1,0 +1,2 @@
+docker exec  -i a3fc4cb261d9 mysql -u <user> -p<password> < init.db.sql
+docker exec -i a3fc4cb261d9 mysql  -u <user> -p<password> <db_name> -e "SHOW TABLES"

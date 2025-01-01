@@ -2,42 +2,55 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	grpcMetadata "github.com/ghostriderdev/movies/metadata/internal/handler/grpc"
-	"github.com/ghostriderdev/movies/metadata/internal/repository/memory"
+	dbmysql "github.com/ghostriderdev/movies/metadata/internal/repository/mysql"
 	metadata "github.com/ghostriderdev/movies/metadata/internal/service"
 	"github.com/ghostriderdev/movies/pkg/discovery"
 	"github.com/ghostriderdev/movies/pkg/discovery/consul"
 	"github.com/ghostriderdev/movies/src/gen"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v3"
 )
 
 const serviceName = "metadata"
 
 func main() {
-	var port int
 
-	flag.IntVar(&port, "port", 6060, "Api handler port")
-	flag.Parse()
+	log.Printf("Starting the metadata service on port")
 
-	log.Printf("Starting the metadata service on port %d", port)
+	f, err := os.Open("base.yaml")
 
-	registry, cancel, err := consul.RegisterService(port, "localhost", serviceName, "localhost:8500")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	var cfg serviceConfig
+
+	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {
+		panic(err)
+	}
+
+	registry, cancel, err := consul.RegisterService(cfg.APIConfig.Port, "localhost", serviceName, cfg.ConsulConfig.Host)
 	if err != nil {
 		log.Fatalf("failed to register service: %v", err)
 	}
 	defer cancel()
 	defer registry.Deregister(context.Background(), discovery.GenerateInstanceID(serviceName), serviceName)
 
-	repo := memory.New()
+	repo, err := dbmysql.New()
+	if err != nil {
+		panic(err)
+	}
 	service := metadata.New(repo)
 	h := grpcMetadata.New(service)
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", cfg.APIConfig.Port))
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -50,7 +63,11 @@ func main() {
 }
 
 func implRest() {
+	/*var port int
 
+	flag.IntVar(&port, "port", 6060, "Api handler port")
+	flag.Parse()
+	*/
 	/*repo := memory.New()
 	service := metadata.New(repo)
 	h := rest.New(service)

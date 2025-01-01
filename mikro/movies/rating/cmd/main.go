@@ -10,10 +10,11 @@ import (
 	"github.com/ghostriderdev/movies/pkg/discovery"
 	"github.com/ghostriderdev/movies/pkg/discovery/consul"
 	grpcRating "github.com/ghostriderdev/movies/rating/internal/handler/grpc"
-	"github.com/ghostriderdev/movies/rating/internal/repository/memory"
+	dbmysql "github.com/ghostriderdev/movies/rating/internal/repository/mysql"
 	rating "github.com/ghostriderdev/movies/rating/internal/service"
 	"github.com/ghostriderdev/movies/src/gen"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 const serviceName = "rating"
@@ -33,7 +34,12 @@ func main() {
 	defer cancel()
 	defer registry.Deregister(context.Background(), discovery.GenerateInstanceID(serviceName), serviceName)
 
-	repo := memory.New()
+	repo, err := dbmysql.New()
+
+	if err != nil {
+		panic(err)
+	}
+
 	service := rating.New(repo)
 	h := grpcRating.New(service)
 
@@ -45,6 +51,8 @@ func main() {
 
 	server := grpc.NewServer()
 	gen.RegisterRatingServiceServer(server, h)
+	reflection.Register(server)
+
 	server.Serve(listener)
 
 }

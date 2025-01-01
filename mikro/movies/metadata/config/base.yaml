@@ -1,0 +1,4 @@
+api:
+  port: 5050
+consul:
+  host: host.docker.internal:8500

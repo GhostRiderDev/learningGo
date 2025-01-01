@@ -12,13 +12,13 @@ var ErrNotFound = errors.New("not found")
 
 type metadataRepository interface {
 	Get(ctx context.Context, id string) (*model.Metadata, error)
+	Put(ctx context.Context, id string, metadata *model.Metadata) error
 }
 
 // Service defines metada service
 type Service struct {
 	repo metadataRepository
 }
-
 
 // New create a metadata service
 func New(repo metadataRepository) *Service {

@@ -1,8 +1,10 @@
 module github.com/ghostriderdev/movies
 
-go 1.23.3
+go 1.23
 
 require (
+	github.com/IBM/sarama v1.44.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/consul/api v1.31.0
 	google.golang.org/grpc v1.69.2
@@ -10,7 +12,7 @@ require (
 )
 
 require (
-	github.com/IBM/sarama v1.44.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
@@ -45,4 +47,5 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
